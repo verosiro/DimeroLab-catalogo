@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Config local de Claude Code
+.claude/
+
+# PDFs y planillas que genera la app (se rehacen con un botón)
+Catalogo_*.pdf
+Lista_*.pdf
+mockup_*.pdf
+DimeroLab_lista_de_trabajo_*.xlsx
+DimeroLab_lista_de_trabajo_*.csv
+
+# LOS DATOS NO VAN AL REPOSITORIO.
+# La lista de precios queda solo en tu computadora; en la web se sube a mano.
+data/*.xlsx
+data/*.csv
+data/backups/
+
+# Material de trabajo interno: se queda en tu computadora.
+# Tiene criterios, decisiones y notas que no son para publicar.
+DIFERENCIALES.md
+
+# Material de trabajo: vistas previas y listas de otros laboratorios.
+# NO se suben: son pesadas y tienen material de terceros.
+ref/
