@@ -41,9 +41,7 @@ generar_pdf.py           Catálogo A4: color por área, índice de uña, portada
 generar_pdf_mobile.py    Versión celular con botones tocables
 folleto.py               Portada institucional
 build_dataset.py         Migración única del Excel viejo (ya corrida)
-data/estudios.xlsx       FUENTE ÚNICA de datos
-DIFERENCIALES.md         Material de contenido y reglas de redacción — LEER antes
-                         de escribir cualquier texto nuevo de la pieza
+data/estudios.xlsx       FUENTE ÚNICA de datos (no se sube al repositorio)
 ```
 
 ## El diseño, en criterios
