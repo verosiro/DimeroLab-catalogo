@@ -96,15 +96,15 @@ def lista_trabajo_df(est, orden="Por rubro", incluir_muestra=False, incluir_plaz
     df = est[est["activo"].astype(str).str.upper().str.strip() == "SI"].copy()
     df["Práctica"] = df["nombre"].astype(str).str.strip()
     df["Rubro"] = df["seccion"].astype(str).str.strip()
-    df["Tipo"] = df["lista"].map({"Perfiles": "Perfil", "Detallado": "Individual"}).fillna("")
     df["Precio"] = df.apply(_precio_celda, axis=1)
-    cols = ["Práctica", "Tipo", "Rubro", "Precio"]
+    cols = ["Práctica", "Rubro", "Precio"]
+    # las opcionales entran siempre antes del precio, que cierra la fila
     if incluir_muestra:
         df["Muestra"] = df["muestra"].astype(str).str.replace("\n", " / ", regex=False).replace("nan", "")
-        cols.insert(3, "Muestra")
+        cols.insert(cols.index("Precio"), "Muestra")
     if incluir_plazo and "plazo" in df.columns:
         df["Plazo"] = df["plazo"].astype(str).replace("nan", "")
-        cols.insert(3, "Plazo")
+        cols.insert(cols.index("Precio"), "Plazo")
     out = df[cols].copy()
     if orden == "Alfabético":
         out = out.sort_values("Práctica", key=lambda s: s.str.lower())
