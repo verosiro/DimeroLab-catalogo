@@ -158,8 +158,17 @@ def _seccion(pdf, titulo):
 
 
 def _puntos(pdf, x, y, muestra, con_texto=True, r=1.2):
+    tubos = tubos_de(muestra)
+    # igual que en el A4: la "o" avisa que alcanza con una de las muestras
+    alternativas = len(tubos) > 1 and G.relacion_tubos(muestra) == "o"
     cx = x
-    for label, color in tubos_de(muestra):
+    for i, (label, color) in enumerate(tubos):
+        if i and alternativas:
+            pdf.set_font(FONT, "I", 5.2); pdf.set_text_color(*GRIS_SUAVE)
+            pdf.set_xy(cx - 0.3, y - 1.0)
+            w_o = pdf.get_string_width("o") + 1.4
+            pdf.cell(w_o, 3, "o", align="C")
+            cx += w_o
         pdf.set_fill_color(*color)
         pdf.ellipse(cx, y, r * 2, r * 2, style="F")
         if con_texto:
@@ -233,7 +242,7 @@ def _combinables_mobile(pdf, grupo):
     pdf.multi_cell(MR - ML, 3.2, "Las bilirrubinas (directa, indirecta y total) cuentan "
                                  "como una sola química.", align="L")
     y = pdf.get_y() + 1
-    _puntos(pdf, ML, y + 0.6, "Tubo seco (Rojo)")
+    _puntos(pdf, ML, y + 0.6, "Tubo seco/con gel")
     pdf.set_y(y + 5)
 
 
@@ -339,7 +348,9 @@ def construir_pdf_mobile(est, cfg, salida=None, listas=("Perfiles", "Detallado")
     y = 22
     pdf.set_xy(ML, y); pdf.set_font(FONT, "", 7); pdf.set_text_color(*GRIS_TXT)
     pdf.multi_cell(MR - ML, 3.6, "El punto de color indica en qué muestra remitir "
-                                 "el estudio.", align="L")
+                                 "el estudio. Si hay varios puntos hacen falta todas "
+                                 "esas muestras; si entre ellos dice “o”, alcanza "
+                                 "con una cualquiera.", align="L")
     y = pdf.get_y() + 2
     for label in LEYENDA_TUBOS:
         pdf.set_fill_color(*color_tubo(label))

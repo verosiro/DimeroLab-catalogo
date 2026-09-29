@@ -94,12 +94,32 @@ LEYENDA_TUBOS = ["EDTA", "Seco/con gel", "Citrato", "Glucemia", "Orina",
 
 def tubos_de(muestra):
     m = str(muestra or "").lower()
+    # "materia fecal SIN formol" no lleva punto de formol: el "sin" niega lo que sigue.
+    # Sin esto, una muestra que no debe llevar conservante mostraba el punto de Tejido/Formol.
+    m = re.sub(r"\bsin\s+\w+", " ", m)
     vistos, out = [], []
     for key, (label, color) in TUBOS:
         if key in m and label not in vistos:
             vistos.append(label)
             out.append((label, color))
     return out
+
+
+def relacion_tubos(muestra):
+    """
+    Si el estudio necesita TODAS las muestras ("y") o alcanza con una ("o").
+    El dato ya está en el texto de la muestra: "+" y "y" suman, "o" e "y/o" son
+    alternativas. Los que separan con guión son paneles de PCR, donde cada
+    muestra es una opción válida por sí sola.
+    """
+    t = str(muestra or "").lower()
+    if re.search(r"\sy/o\s|\so\s", t):
+        return "o"
+    if "+" in t or re.search(r"\sy\s", t):
+        return "y"
+    if "-" in t:
+        return "o"
+    return "y"
 
 
 def color_tubo(label):
@@ -454,9 +474,31 @@ def _dibujar_precio(pdf, x, y, row, size=10.5):
     return pdf.get_string_width(txt)
 
 
-def _puntos_tubo(pdf, x, y, muestra, r=1.5, gap=4.2, con_texto=False):
+def _puntos_tubo(pdf, x, y, muestra, r=1.5, gap=4.2, con_texto=False, ancho_max=None):
+    """
+    Los puntos de muestra. Cuando alcanza con UNA de las muestras va una "o"
+    entre los puntos; sin la "o", hacen falta todas. Sin esa marca el catálogo
+    decía que había que mandarlas todas siempre, y no es cierto.
+    """
+    tubos = tubos_de(muestra)
+    alternativas = len(tubos) > 1 and relacion_tubos(muestra) == "o"
+    pdf.set_font(FONT, "I", 6.2)
+    w_o = pdf.get_string_width("o") + 1.6 if alternativas else 0
+
+    # con muchos tubos los puntos se comían el nombre del estudio: si no entran, se achican
+    if ancho_max and not con_texto and len(tubos) > 1:
+        necesario = (len(tubos) - 1) * (gap + w_o) + r * 2
+        if necesario > ancho_max:
+            f = ancho_max / necesario
+            r, gap, w_o = r * f, gap * f, w_o * f
+
     cx = x
-    for label, color in tubos_de(muestra):
+    for i, (label, color) in enumerate(tubos):
+        if i and alternativas:
+            pdf.set_font(FONT, "I", 6.2); pdf.set_text_color(*GRIS_SUAVE)
+            pdf.set_xy(cx - 0.4, y - 1.1)
+            pdf.cell(w_o, 3.4, "o", align="C")
+            cx += w_o
         pdf.set_fill_color(*color)
         pdf.ellipse(cx, y, r * 2, r * 2, style="F")
         if con_texto:
@@ -586,7 +628,7 @@ def _render_detallado(pdf, grupo):
         if pdf.get_y() + h > 275:
             pdf.add_page()
         y0 = pdf.get_y()
-        _puntos_tubo(pdf, ML, y0 + 1.8, muestra)
+        _puntos_tubo(pdf, ML, y0 + 1.8, muestra, ancho_max=name_x - ML - 2)
         pdf.set_font(FONT, "B", 9.3); pdf.set_text_color(*GRIS_TXT)
         pdf.set_xy(name_x, y0)
         if not multilinea:
@@ -725,8 +767,9 @@ def _pagina_como_leer(pdf, hay_sellos=True):
     pdf.cell(MR - ML, 6, "1 · Los puntos de color indican la muestra")
     pdf.set_xy(ML, y + 7); pdf.set_font(FONT, "", 9); pdf.set_text_color(*GRIS_TXT)
     pdf.multi_cell(MR - ML - 10, 4.4, "Cada estudio lleva el punto de la muestra en la que "
-                                      "hay que remitirlo. Si ves más de un punto, hacen falta "
-                                      "todas esas muestras.", align="L")
+                                      "hay que remitirlo. Si ves varios puntos juntos, hacen "
+                                      "falta todas esas muestras; si entre los puntos dice "
+                                      "“o”, alcanza con una cualquiera de ellas.", align="L")
     y = pdf.get_y() + 3
     col_w = (MR - ML) / 2
     for i, label in enumerate(LEYENDA_TUBOS):
@@ -858,8 +901,8 @@ def _pagina_camino(pdf):
     pdf.set_xy(ML, 24); pdf.set_font(DISPLAY, "B", 25); pdf.set_text_color(*NEGRO_SUAVE)
     pdf.cell(MR - ML, 12, "El camino de tu muestra")
     pdf.set_xy(ML, 37); pdf.set_font(FONT, "", 10.5); pdf.set_text_color(*GRIS_TXT)
-    pdf.multi_cell(MR - ML - 20, 5, "Qué pasa desde que nos la enviás hasta que tenés el "
-                                    "resultado — y después también.", align="L")
+    pdf.multi_cell(MR - ML - 20, 5, "Qué pasa desde que nos la enviás hasta que tenés "
+                                    "el resultado.", align="L")
     x_num, x_txt = ML + 5, ML + 18
     w_txt = MR - x_txt
     y = 47
@@ -913,9 +956,11 @@ def _pagina_sabias(pdf):
     pdf.set_xy(ML, 24); pdf.set_font(DISPLAY, "B", 26); pdf.set_text_color(*NEGRO_SUAVE)
     pdf.cell(MR - ML, 12, "¿Sabías que podés…?")
     pdf.set_xy(ML, 38); pdf.set_font(FONT, "", 10.5); pdf.set_text_color(*GRIS_TXT)
-    pdf.multi_cell(MR - ML - 15, 5, "Cosas que ya están disponibles y quizás no estás "
-                                    "usando. Todas se hacen desde la app.", align="L")
-    y = 54
+    pdf.multi_cell(MR - ML - 15, 5, "Si ya trabajás con nosotros, todo esto ya lo tenés "
+                                    "disponible y quizás no lo estás usando. Se hace "
+                                    "desde la app, sin trámite ni costo extra.", align="L")
+    # arranca donde termina la bajada: si crece, las tarjetas bajan con ella
+    y = pdf.get_y() + 6
     for col, titulo, texto, extra in SABIAS:
         pdf.set_font(FONT, "", 9)
         n1 = len(pdf.multi_cell(MR - ML - 22, 4.6, texto, dry_run=True, output="LINES"))
@@ -1087,9 +1132,10 @@ def _grupos_ordenados(sub):
 
 
 LISTAS_META = {
-    "Perfiles": ("Perfiles y búsquedas",
+    "Perfiles": ("Perfiles y paneles",
                  "Combinaciones armadas por nuestro equipo para responder las preguntas "
-                 "clínicas más frecuentes, con el mejor rendimiento por muestra.",
+                 "clínicas más frecuentes, con el mejor rendimiento por muestra. "
+                 "Incluye los combos y los estudios de patología.",
                  (0, 96, 120)),
     "Detallado": ("Estudios individuales",
                   "Todas las determinaciones disponibles, organizadas por área. "
