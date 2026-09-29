@@ -23,8 +23,9 @@ ANCHO = W - ML * 2
 
 # El texto, acá arriba para que sea fácil cambiarlo sin tocar el dibujo.
 TITULO = "Catálogo|de servicios"     # el "|" marca el quiebre de renglón
-CUERPO = ("215 estudios: qué incluye cada uno, "
-          "en qué tubo va y cuánto sale.")
+# Sin línea intermedia a propósito: el título y el pedido alcanzan, y en un
+# estado se compite con el pulgar. Si algún día se quiere una, va acá.
+CUERPO = ""
 CIERRE = "¿No te llegó?"
 CTA = "Respondé este estado\ny te lo mandamos."
 
@@ -79,11 +80,12 @@ def construir(cfg, salida_png):
     pdf.set_line_width(0.8)
     pdf.line(ML, y, ML + 16, y)
 
-    # cuerpo
+    # cuerpo (opcional)
     pdf.set_xy(ML, y + 6)
-    pdf.set_font(FONT, "", 9.4)
-    pdf.set_text_color(235, 245, 247)
-    pdf.multi_cell(ANCHO - 4, 5.4, CUERPO, align="L")
+    if CUERPO:
+        pdf.set_font(FONT, "", 9.4)
+        pdf.set_text_color(235, 245, 247)
+        pdf.multi_cell(ANCHO - 4, 5.4, CUERPO, align="L")
 
     # Cierre y llamada a la acción. Van después del cuerpo, no en una coordenada
     # fija: si el texto de arriba crece, esto baja en vez de pisarse.
