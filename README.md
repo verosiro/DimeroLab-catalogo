@@ -20,6 +20,8 @@ streamlit run app.py
 
 - **📄 Generar PDF** — catálogo completo, solo Perfiles, solo Individuales, o la
   **versión celular** (formato angosto con botones tocables a la app y a WhatsApp).
+  El archivo se llama solo con la vigencia que cargaste
+  (`Catalogo DimeroLab octubre 2026.pdf`), así nunca se confunde con uno viejo.
 - **🧾 Lista de trabajo** — tabla plana (Excel/CSV) para que el cliente cargue tus
   precios en su sistema de gestión.
 - **📈 Aumentos** — por todo / lista / sección / estudio puntual, con vista previa

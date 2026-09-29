@@ -16,6 +16,9 @@ Uso:
     construir_pdf(est, cfg, "Catalogo.pdf", incluir_folleto=True)
 """
 from pathlib import Path
+from datetime import date
+import re
+import unicodedata
 import pandas as pd
 from fpdf import FPDF
 
@@ -183,6 +186,46 @@ def cargar_datos(xlsx_path):
     cfg_df = pd.read_excel(xlsx_path, sheet_name="Config")
     cfg = dict(zip(cfg_df["clave"], cfg_df["valor"]))
     return est, cfg
+
+
+# ---- nombre de archivo (para saber de cuándo es cada catálogo) ----
+MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+         "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+# "setiembre" es habitual acá y hay que reconocerlo igual
+_ALIAS_MES = {"setiembre": "septiembre"}
+
+
+def _sin_acentos(t):
+    return unicodedata.normalize("NFKD", str(t)).encode("ascii", "ignore").decode().lower()
+
+
+def periodo_vigencia(cfg):
+    """
+    Saca el período de la vigencia para nombrar archivos:
+    '1 de OCTUBRE 2026' -> 'octubre 2026'.
+    Si la vigencia está vacía o no se entiende, usa el mes actual.
+    """
+    plano = _sin_acentos((cfg or {}).get("vigencia", "") or "")
+    mes = next((m for m in MESES if m in plano), None)
+    if mes is None:
+        mes = next((v for k, v in _ALIAS_MES.items() if k in plano), None)
+    anio = re.search(r"(20\d{2})", plano)
+    if mes and anio:
+        return f"{mes} {anio.group(1)}"
+    hoy = date.today()
+    return f"{MESES[hoy.month - 1]} {hoy.year}"
+
+
+def nombre_archivo(cfg, variante="", ext="pdf"):
+    """
+    'Catalogo DimeroLab octubre 2026.pdf', o con variante:
+    'Catalogo DimeroLab octubre 2026 - celular.pdf'.
+    """
+    base = f"Catalogo DimeroLab {periodo_vigencia(cfg)}"
+    if variante:
+        base += f" - {variante}"
+    base = re.sub(r'[/\\:*?"<>|]', "-", base).strip()
+    return f"{base}.{ext}"
 
 
 # ---- sellos (etiquetas de valor junto al estudio) ----
@@ -662,7 +705,7 @@ def _link_whatsapp(cfg, texto=""):
     return base
 
 
-def _pagina_como_leer(pdf):
+def _pagina_como_leer(pdf, hay_sellos=True):
     """Explica el sistema de lectura del catálogo + QR a la app y a WhatsApp."""
     ML, MR = 16, 194
     pdf.modo_institucional = True
@@ -673,7 +716,8 @@ def _pagina_como_leer(pdf):
     pdf.set_xy(ML, 24); pdf.set_font(DISPLAY, "B", 25); pdf.set_text_color(*NEGRO_SUAVE)
     pdf.cell(MR - ML, 12, "Cómo leer este catálogo")
     pdf.set_xy(ML, 37); pdf.set_font(FONT, "", 10.5); pdf.set_text_color(*GRIS_TXT)
-    pdf.multi_cell(MR - ML - 20, 5, "Tres cosas que te van a ahorrar tiempo.", align="L")
+    pdf.multi_cell(MR - ML - 20, 5, ("Tres cosas" if hay_sellos else "Dos cosas") +
+                   " que te van a ahorrar tiempo.", align="L")
 
     # 1) los puntos de color
     y = 50
@@ -713,14 +757,17 @@ def _pagina_como_leer(pdf):
     pdf.cell(56, 3.4, "ejemplo: Perfil general")
     y += 22
 
-    # 3) los sellos
-    pdf.set_xy(ML, y); pdf.set_font(FONT, "B", 12); pdf.set_text_color(*TEAL_OSC)
-    pdf.cell(MR - ML, 6, "3 · Los sellos marcan lo que ya está incluido")
-    pdf.set_xy(ML, y + 7); pdf.set_font(FONT, "", 9); pdf.set_text_color(*GRIS_TXT)
-    pdf.multi_cell(MR - ML - 50, 4.4, "Cuando un estudio lleva un sello, eso ya viene adentro: "
-                                      "no hace falta pedirlo aparte ni se cobra por separado.", align="L")
-    _dibujar_sellos(pdf, MR - 46, y + 8.5, ["YA INCLUIDO"], size=7)
-    y = pdf.get_y() + 8
+    # 3) los sellos (solo si alguno está en uso)
+    if hay_sellos:
+        pdf.set_xy(ML, y); pdf.set_font(FONT, "B", 12); pdf.set_text_color(*TEAL_OSC)
+        pdf.cell(MR - ML, 6, "3 · Los sellos marcan lo que ya está incluido")
+        pdf.set_xy(ML, y + 7); pdf.set_font(FONT, "", 9); pdf.set_text_color(*GRIS_TXT)
+        pdf.multi_cell(MR - ML - 50, 4.4, "Cuando un estudio lleva un sello, eso ya viene adentro: "
+                                          "no hace falta pedirlo aparte ni se cobra por separado.", align="L")
+        _dibujar_sellos(pdf, MR - 46, y + 8.5, ["YA INCLUIDO"], size=7)
+        y = pdf.get_y() + 8
+    else:
+        y += 4
 
     # QR a la app y a WhatsApp
     pdf.set_fill_color(*TEAL_XSUAVE)
@@ -1073,7 +1120,9 @@ def construir_pdf(est, cfg, salida=None, listas=("Perfiles", "Detallado"),
     if incluir_institucional:
         _pagina_camino(pdf)
         _pagina_sabias(pdf)
-        _pagina_como_leer(pdf)
+        hay_sellos = any(
+            str(v).strip() not in ("", "nan") for v in est.get("sellos", pd.Series(dtype=str)))
+        _pagina_como_leer(pdf, hay_sellos)
 
     for lista in listas:
         sub = est[est["lista"] == lista]
@@ -1118,6 +1167,6 @@ def construir_pdf(est, cfg, salida=None, listas=("Perfiles", "Detallado"),
 
 if __name__ == "__main__":
     est, cfg = cargar_datos(BASE / "data" / "estudios.xlsx")
-    salida = BASE / "Catalogo_DimeroLab.pdf"
+    salida = BASE / nombre_archivo(cfg)
     construir_pdf(est, cfg, salida, incluir_folleto=True)
     print("PDF generado:", salida)

@@ -407,6 +407,6 @@ def construir_pdf_mobile(est, cfg, salida=None, listas=("Perfiles", "Detallado")
 
 if __name__ == "__main__":
     est, cfg = cargar_datos(Path(__file__).parent / "data" / "estudios.xlsx")
-    out = Path(__file__).parent / "Catalogo_DimeroLab_CELULAR.pdf"
+    out = Path(__file__).parent / G.nombre_archivo(cfg, "celular")
     construir_pdf_mobile(est, cfg, out)
     print("PDF celular generado:", out)

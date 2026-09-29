@@ -8,12 +8,13 @@ __pycache__/
 # Config local de Claude Code
 .claude/
 
-# PDFs y planillas que genera la app (se rehacen con un botón)
-Catalogo_*.pdf
-Lista_*.pdf
-mockup_*.pdf
-DimeroLab_lista_de_trabajo_*.xlsx
-DimeroLab_lista_de_trabajo_*.csv
+# PDFs y planillas que genera la app (se rehacen con un botón).
+# Los PDF llevan TODOS los precios: ninguno va al repositorio.
+# Va por extensión a propósito: si mañana cambia el nombre del archivo,
+# el filtro sigue tapando igual.
+*.pdf
+DimeroLab*lista*de*trabajo*.xlsx
+DimeroLab*lista*de*trabajo*.csv
 
 # LOS DATOS NO VAN AL REPOSITORIO.
 # La lista de precios queda solo en tu computadora; en la web se sube a mano.

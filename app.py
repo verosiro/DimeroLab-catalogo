@@ -14,7 +14,7 @@ from io import BytesIO
 import pandas as pd
 import streamlit as st
 
-from generar_pdf import construir_pdf, money
+from generar_pdf import construir_pdf, money, nombre_archivo, periodo_vigencia
 from generar_pdf_mobile import construir_pdf_mobile
 
 BASE = Path(__file__).parent
@@ -214,19 +214,19 @@ with tab_pdf:
 
     st.session_state.cfg = cfg
     gen = st.columns(3)
+    # el nombre del archivo lleva la vigencia: así se sabe de cuándo es cada catálogo
     opciones = {
-        "Catálogo completo": ("Perfiles", "Detallado"),
-        "Solo Perfiles": ("Perfiles",),
-        "Solo Estudios individuales": ("Detallado",),
+        "Catálogo completo": (("Perfiles", "Detallado"), ""),
+        "Solo Perfiles": (("Perfiles",), "perfiles"),
+        "Solo Estudios individuales": (("Detallado",), "estudios individuales"),
     }
-    for (label, listas), col in zip(opciones.items(), gen):
+    for (label, (listas, variante)), col in zip(opciones.items(), gen):
         with col:
             if st.button(f"🖨️ {label}", use_container_width=True):
                 with st.spinner("Generando PDF…"):
                     data = construir_pdf(est, cfg, listas=listas, incluir_folleto=incluir_folleto)
                 st.session_state["pdf_data"] = data
-                st.session_state["pdf_name"] = "Lista_de_Precios_DimeroLab.pdf" if len(listas) == 2 \
-                    else f"Lista_{listas[0]}_DimeroLab.pdf"
+                st.session_state["pdf_name"] = nombre_archivo(cfg, variante)
                 st.success("¡PDF listo! Botón de descarga abajo 👇")
 
     st.divider()
@@ -236,7 +236,7 @@ with tab_pdf:
     if st.button("📱 Generar versión celular", use_container_width=True):
         with st.spinner("Generando versión celular…"):
             st.session_state["pdf_data"] = construir_pdf_mobile(est, cfg)
-            st.session_state["pdf_name"] = "Catalogo_DimeroLab_CELULAR.pdf"
+            st.session_state["pdf_name"] = nombre_archivo(cfg, "celular")
         st.success("¡Listo! Botón de descarga abajo 👇")
 
     if "pdf_data" in st.session_state:
@@ -264,14 +264,14 @@ with tab_trabajo:
     st.write(f"**{len(lt)} prácticas** activas.")
     st.dataframe(lt, use_container_width=True, height=340, hide_index=True)
 
-    fecha = str(cfg.get("vigencia", "")).replace(" ", "_")
+    periodo = periodo_vigencia(cfg)
     d1, d2 = st.columns(2)
     d1.download_button("⬇️ Descargar Excel plano", data=lista_trabajo_xlsx(lt, cfg),
-                       file_name=f"DimeroLab_lista_de_trabajo_{fecha}.xlsx",
+                       file_name=f"DimeroLab lista de trabajo {periodo}.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                        use_container_width=True)
     d2.download_button("⬇️ Descargar CSV", data=lista_trabajo_csv(lt),
-                       file_name=f"DimeroLab_lista_de_trabajo_{fecha}.csv",
+                       file_name=f"DimeroLab lista de trabajo {periodo}.csv",
                        mime="text/csv", use_container_width=True)
     st.caption("El **Excel plano** sirve para copiar/pegar o importar por planilla. "
                "El **CSV** es el que suelen pedir los importadores masivos. "
